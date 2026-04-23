@@ -1,0 +1,13 @@
+{
+  "name": "bai14-web",
+  "version": "1.0.0",
+  "description": "Web service for custom network communication",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.4.0"
+  }
+}

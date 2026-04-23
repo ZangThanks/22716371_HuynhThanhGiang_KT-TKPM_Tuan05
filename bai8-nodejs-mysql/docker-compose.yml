@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bai8-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: nodedb
+      MYSQL_USER: nodeuser
+      MYSQL_PASSWORD: nodepass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - bai8-network
+
+  nodejs:
+    build: .
+    container_name: bai8-nodejs
+    depends_on:
+      - mysql
+    environment:
+      DB_HOST: mysql
+      DB_USER: nodeuser
+      DB_PASSWORD: nodepass
+      DB_NAME: nodedb
+    ports:
+      - "3000:3000"
+    networks:
+      - bai8-network
+
+networks:
+  bai8-network:
+    driver: bridge
+
+volumes:
+  mysql_data:

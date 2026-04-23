@@ -1,0 +1,12 @@
+{
+  "name": "bai14-api",
+  "version": "1.0.0",
+  "description": "API service for custom network communication",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

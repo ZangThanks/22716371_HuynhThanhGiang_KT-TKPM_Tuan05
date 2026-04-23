@@ -1,0 +1,74 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: bai15-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - bai15-network
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5" # Giới hạn CPU: 50% của 1 core
+          memory: 256M # Giới hạn RAM: 256MB
+        reservations:
+          cpus: "0.25" # CPU dự trữ: 25%
+          memory: 128M # RAM dự trữ: 128MB
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Client để test Redis
+  redis-client:
+    image: node:18-alpine
+    container_name: bai15-redis-client
+    working_dir: /app
+    volumes:
+      - ./client.js:/app/client.js
+    command: node client.js
+    depends_on:
+      - redis
+    networks:
+      - bai15-network
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  # Monitoring container với redis-commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: bai15-redis-commander
+    ports:
+      - "8082:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - bai15-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+networks:
+  bai15-network:
+    driver: bridge
+
+volumes:
+  redis_data:

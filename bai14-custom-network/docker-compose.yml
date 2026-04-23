@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # Service 1: Web Server
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: bai14-web
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: http://api:5000
+      SERVICE_NAME: web
+    networks:
+      - bai14-private-network
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Service 2: API Server
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: bai14-api
+    ports:
+      - "5000:5000"
+    environment:
+      SERVICE_NAME: api
+      DATABASE_URL: postgres://db_user:db_pass@postgres:5432/bai14_db
+    networks:
+      - bai14-private-network
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Service 3: Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bai14-postgres
+    environment:
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD: db_pass
+      POSTGRES_DB: bai14_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bai14-private-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db_user -d bai14_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  # Custom bridge network
+  bai14-private-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br_bai14
+
+volumes:
+  postgres_data:

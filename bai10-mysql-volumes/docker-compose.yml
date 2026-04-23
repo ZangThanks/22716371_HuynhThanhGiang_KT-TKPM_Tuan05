@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bai10-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppass
+    ports:
+      - "3306:3306"
+    volumes:
+      # Named volume for persistent data
+      - mysql_data_volume:/var/lib/mysql
+      # Bind mount for custom configuration
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # Bind mount for logs
+      - ./logs:/var/log/mysql
+    networks:
+      - bai10-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: bai10-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: appuser
+      PMA_PASSWORD: apppass
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+    networks:
+      - bai10-network
+
+networks:
+  bai10-network:
+    driver: bridge
+
+volumes:
+  mysql_data_volume:
