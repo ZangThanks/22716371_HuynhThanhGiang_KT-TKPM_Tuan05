@@ -1,0 +1,82 @@
+version: "3.8"
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:latest
+    container_name: bai2-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password_123
+      MONGO_INITDB_DATABASE: nodejs_app_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - nodejs_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Node.js Application
+  nodejs:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai2-nodejs
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_USER: mongo_user
+      MONGODB_PASSWORD: mongo_password_123
+      MONGODB_DB: nodejs_app_db
+      NODE_ENV: development
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    networks:
+      - nodejs_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Mongo Express (MongoDB UI)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: bai2-mongo-express
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo_user:mongo_password_123@mongodb:27017/
+      ME_CONFIG_MONGODB_ADMINUSERNAME: mongo_user
+      ME_CONFIG_MONGODB_ADMINPASSWORD: mongo_password_123
+      ME_CONFIG_BASICAUTH: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongodb
+    networks:
+      - nodejs_network
+    restart: unless-stopped
+
+networks:
+  nodejs_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

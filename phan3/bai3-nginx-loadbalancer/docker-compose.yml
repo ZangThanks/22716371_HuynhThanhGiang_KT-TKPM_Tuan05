@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  # Flask Application 1
+  flask1:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai3-flask1
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: production
+      INSTANCE_NAME: Flask-Instance-1
+      INSTANCE_PORT: 5000
+    expose:
+      - "5000"
+    volumes:
+      - ./app:/app
+      - /app/__pycache__
+    networks:
+      - lb_network
+    restart: unless-stopped
+
+  # Flask Application 2
+  flask2:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai3-flask2
+    environment:
+      FLASK_APP: app.py
+      FLASK_ENV: production
+      INSTANCE_NAME: Flask-Instance-2
+      INSTANCE_PORT: 5000
+    expose:
+      - "5000"
+    volumes:
+      - ./app:/app
+      - /app/__pycache__
+    networks:
+      - lb_network
+    restart: unless-stopped
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: bai3-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - flask1
+      - flask2
+    networks:
+      - lb_network
+    restart: unless-stopped
+
+networks:
+  lb_network:
+    driver: bridge

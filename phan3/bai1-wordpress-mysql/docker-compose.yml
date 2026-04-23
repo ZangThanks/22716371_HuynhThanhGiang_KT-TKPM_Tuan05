@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:5.7
+    container_name: bai1-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_123
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_password_123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - wordpress_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    restart: unless-stopped
+
+  # WordPress Application
+  wordpress:
+    image: wordpress:latest
+    container_name: bai1-wordpress
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: mysql:3306
+      WORDPRESS_DB_NAME: wordpress_db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_password_123
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: "true"
+    ports:
+      - "80:80"
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wordpress-config.php:/usr/local/etc/php/conf.d/wordpress.ini
+    networks:
+      - wordpress_network
+    restart: unless-stopped
+
+  # phpMyAdmin (optional for database management)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: bai1-phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: wp_user
+      PMA_PASSWORD: wp_password_123
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - wordpress_network
+    restart: unless-stopped
+
+networks:
+  wordpress_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  wordpress_data:
+    driver: local

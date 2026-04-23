@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  # Frontend Voting App (Python Flask)
+  vote:
+    image: python:3.11-slim
+    container_name: bai5-vote
+    working_dir: /app
+    command: python app.py
+    volumes:
+      - ./vote:/app
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_APP: app.py
+    depends_on:
+      - redis
+    networks:
+      - voting_network
+    restart: unless-stopped
+
+  # Backend Result App (Node.js)
+  result:
+    image: node:18
+    container_name: bai5-result
+    working_dir: /app
+    command: npm start
+    volumes:
+      - ./result:/app
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://postgres:password@postgres:5432/voting
+    depends_on:
+      - postgres
+    networks:
+      - voting_network
+    restart: unless-stopped
+
+  # Cache (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: bai5-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - voting_network
+    restart: unless-stopped
+
+  # Worker (processes votes from Redis to DB)
+  worker:
+    image: java:11
+    container_name: bai5-worker
+    working_dir: /app
+    command: java -jar worker.jar
+    volumes:
+      - ./worker:/app
+    environment:
+      REDIS_HOST: redis
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: voting
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - voting_network
+    restart: unless-stopped
+
+  # Database (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: bai5-postgres
+    environment:
+      POSTGRES_DB: voting
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - voting_network
+    restart: unless-stopped
+
+networks:
+  voting_network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  postgres_data:
