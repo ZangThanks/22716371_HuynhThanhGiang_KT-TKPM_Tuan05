@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: bai8-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - celery_network
+    restart: unless-stopped
+
+  django:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai8-django
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "True"
+    depends_on:
+      - redis
+    networks:
+      - celery_network
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai8-celery-worker
+    command: celery -A config worker -l info
+    volumes:
+      - ./app:/app
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - django
+    networks:
+      - celery_network
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: bai8-celery-beat
+    command: celery -A config beat -l info
+    volumes:
+      - ./app:/app
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - django
+    networks:
+      - celery_network
+    restart: unless-stopped
+
+networks:
+  celery_network:
+    driver: bridge
+
+volumes:
+  redis_data:
